@@ -1,0 +1,10 @@
+chart_plan={
+ "monthly PM2.5 trend":("line","date","mean PM2.5"),
+ "station comparison":("bar","station","mean PM2.5"),
+ "temperature relationship":("scatter","temperature C","PM2.5"),
+ "worst hours":("box plot","hour","PM2.5 distribution")}
+sql="""SELECT station_id, substr(reading_time,1,10) AS day,
+ MIN(pm25), MAX(pm25), AVG(pm25), COUNT(pm25)
+ FROM reading GROUP BY station_id, day ORDER BY station_id, day"""
+print(chart_plan)
+print("summary query:",sql)
