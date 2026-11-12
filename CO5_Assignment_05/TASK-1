@@ -1,0 +1,19 @@
+import sqlite3
+con=sqlite3.connect(":memory:")
+con.executescript("""
+CREATE TABLE station(station_id TEXT PRIMARY KEY, station_name TEXT UNIQUE NOT NULL, temp_unit TEXT NOT NULL);
+CREATE TABLE reading(
+ station_id TEXT NOT NULL REFERENCES station(station_id),
+ reading_time TEXT NOT NULL, pm25 REAL, pm10 REAL, no2 REAL, temp_c REAL,
+ PRIMARY KEY(station_id, reading_time));
+CREATE INDEX idx_reading_station_time ON reading(station_id,reading_time);
+""")
+con.executemany("INSERT INTO station VALUES(?,?,?)",
+ [("S01","Adyar","C"),("S02","Guindy","F")])
+con.executemany("INSERT INTO reading VALUES(?,?,?,?,?,?)",
+ [("S01","2026-10-01T00:00",48,80,12,29),
+  ("S01","2026-10-02T00:00",52,82,14,30),
+  ("S02","2026-10-01T00:00",95,110,19,30)])
+print(con.execute("SELECT station_id,AVG(pm25) FROM reading GROUP BY station_id").fetchall())
+print(con.execute("SELECT AVG(pm25) FROM reading WHERE station_id=? AND reading_time>=? AND reading_time<?",
+                  ("S01","2026-10-01","2026-11-01")).fetchone())
