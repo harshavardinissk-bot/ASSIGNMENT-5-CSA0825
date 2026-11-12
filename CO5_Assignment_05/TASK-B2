@@ -1,0 +1,18 @@
+import sqlite3,csv,io
+con=sqlite3.connect(":memory:")
+con.execute("CREATE TABLE station(name TEXT)")
+con.executemany("INSERT INTO station VALUES(?)",[("Adyar",),("Guindy",)])
+attack="Adyar' OR '1'='1"
+unsafe="SELECT name FROM station WHERE name='"+attack+"'"
+safe="SELECT name FROM station WHERE name=?"
+print("unsafe rows:",con.execute(unsafe).fetchall())
+print("safe rows:",con.execute(safe,(attack,)).fetchall())
+for name,text in [("missing column","station;pm25\nAdyar;2"),
+                  ("wrong delimiter","station,date,pm25\nAdyar;2026-10-01;2"),
+                  ("empty","station,date,pm25\n")]:
+    reader=csv.DictReader(io.StringIO(text))
+    print(name,list(reader))
+try: b"station,pm25\nAdyar,\xff".decode("utf-8")
+except UnicodeDecodeError as e: print("encoding:",type(e).__name__)
+for text in ["Great, another dirty street.","not not good","clean but the smoke is bad"]:
+    print(text,score(text),label(text))
