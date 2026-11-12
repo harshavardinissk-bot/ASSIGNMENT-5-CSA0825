@@ -1,0 +1,37 @@
+import csv,io,sqlite3
+RAW="""station,date,hour,pm25,pm10,no2,temp,unit
+Adyar,2026-10-01,0,48,80,12,86,F
+Adyar,2026-10-02,1,NA,70,10,30,C
+Guindy,2026-10-01,0,95,110,19,30,C
+Guindy,2026-10-02,1,-5,20,5,31,C
+Guindy,2026-10-03,2,121,130,25,32,C
+Adyar,2026-10-04,3,1200,90,8,29,C
+"""
+def load_clean(text):
+    rows=[]
+    for r in csv.DictReader(io.StringIO(text)):
+        try:
+            x=float(r["pm25"])
+            if x<0 or x>999: continue
+            temp=float(r["temp"])
+            if r["unit"].upper()=="F": temp=(temp-32)*5/9
+            rows.append((r["station"].strip(),r["date"],int(r["hour"]),x,float(r["pm10"]),float(r["no2"]),temp))
+        except (ValueError,KeyError): continue
+    return rows
+rows=load_clean(RAW)
+con=sqlite3.connect(":memory:")
+con.execute("CREATE TABLE aq(station TEXT,day TEXT,hour INTEGER,pm25 REAL,pm10 REAL,no2 REAL,temp_c REAL)")
+con.executemany("INSERT INTO aq VALUES(?,?,?,?,?,?,?)",rows); con.commit()
+print("clean:",rows)
+print("Adyar mean:",con.execute("SELECT AVG(pm25) FROM aq WHERE station=?",("Adyar",)).fetchone()[0])
+print("station means:",con.execute("SELECT station,AVG(pm25) FROM aq GROUP BY station").fetchall())
+print("worst hour:",con.execute("SELECT hour,AVG(pm25) FROM aq GROUP BY hour ORDER BY AVG(pm25) DESC LIMIT 1").fetchone())
+import matplotlib.pyplot as plt
+trend=con.execute("SELECT day,AVG(pm25) FROM aq GROUP BY day ORDER BY day").fetchall()
+plt.plot([r[0] for r in trend],[r[1] for r in trend]); plt.title("Daily PM2.5"); plt.xlabel("Date"); plt.ylabel("PM2.5"); plt.savefig("trend.png"); plt.close()
+stations=con.execute("SELECT station,AVG(pm25) FROM aq GROUP BY station").fetchall()
+plt.bar([r[0] for r in stations],[r[1] for r in stations]); plt.title("Station means"); plt.xlabel("Station"); plt.ylabel("PM2.5"); plt.savefig("stations.png"); plt.close()
+pts=con.execute("SELECT temp_c,pm25 FROM aq").fetchall()
+plt.scatter([r[0] for r in pts],[r[1] for r in pts]); plt.title("Temperature vs PM2.5"); plt.xlabel("Temperature C"); plt.ylabel("PM2.5"); plt.savefig("temperature.png"); plt.close()
+hours=con.execute("SELECT hour,pm25 FROM aq ORDER BY hour").fetchall()
+plt.boxplot([[v for h,v in hours if h==hour] for hour in sorted({h for h,v in hours})]); plt.title("PM2.5 by hour"); plt.xlabel("Hour group"); plt.ylabel("PM2.5"); plt.savefig("hourly.png"); plt.close()
