@@ -1,0 +1,26 @@
+def summarize(text,k=2):
+    import re,collections
+    sentences=[s.strip() for s in re.split(r"[.!?]+",text) if s.strip()]
+    stop={"the","and","is","in","to","a","of","was","are"}
+    words=[w.lower() for w in re.findall(r"[A-Za-z]+",text) if w.lower() not in stop]
+    freq=collections.Counter(words)
+    ranked=sorted(enumerate(sentences),key=lambda z:(-sum(freq[w.lower()] for w in re.findall(r"[A-Za-z]+",z[1])),z[0]))
+    return [sentences[i] for i,_ in sorted(ranked[:k])]
+import time
+query="SELECT AVG(pm25) FROM aq WHERE station=? AND day=?"
+t=time.perf_counter()
+for _ in range(1000): con.execute(query,("Adyar","2026-10-01")).fetchone()
+before=time.perf_counter()-t
+con.execute("CREATE INDEX IF NOT EXISTS idx_station_day ON aq(station,day)")
+t=time.perf_counter()
+for _ in range(1000): con.execute(query,("Adyar","2026-10-01")).fetchone()
+after=time.perf_counter()-t
+print("query seconds before/after:",before,after)
+print("index:",con.execute("EXPLAIN QUERY PLAN SELECT AVG(pm25) FROM aq WHERE station=? AND day=?",
+                          ("Adyar","2026-10-01")).fetchall())
+complaints=["The air is clean and the buses are fast."]*24+["Smoke is bad and the road is dirty."]*25+["Not not good"]
+gold=["positive"]*24+["negative"]*25+["positive"]
+pred=[label(x) for x in complaints]
+print("agreement:",sum(a==b for a,b in zip(gold,pred)),"/",len(gold))
+print("mislabel:",complaints[-1],label(complaints[-1]),"expected positive")
+print("summary:",summarize("Smoke is bad. The road is dirty. Buses are slow.",2))
