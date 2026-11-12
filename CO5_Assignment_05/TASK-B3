@@ -1,0 +1,34 @@
+from collections import defaultdict
+from datetime import date,timedelta
+from time import perf_counter
+import sqlite3,random,cProfile
+def loop_means(rows):
+    sums=defaultdict(float); counts=defaultdict(int)
+    for station,day,value in rows:
+        key=(station,day); sums[key]+=value; counts[key]+=1
+    return {k:sums[k]/counts[k] for k in sums}
+def sql_means(rows):
+    con=sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE r(station TEXT, day TEXT, pm25 REAL)")
+    con.executemany("INSERT INTO r VALUES(?,?,?)",rows)
+    result=dict(((s,d),m) for s,d,m in con.execute("SELECT station,day,AVG(pm25) FROM r GROUP BY station,day"))
+    con.close(); return result
+def pandas_means(rows):
+    import pandas as pd
+    frame=pd.DataFrame(rows,columns=["station","day","pm25"])
+    return {(r.station,r.day):r.pm25 for r in frame.groupby(["station","day"],as_index=False).pm25.mean().itertuples()}
+def make_rows(stations):
+    start=date(2026,1,1); rng=random.Random(7); rows=[]
+    for s in range(stations):
+        for day in range(365):
+            stamp=(start+timedelta(days=day)).isoformat()
+            for hour in range(24): rows.append((f"S{s:03d}",stamp,float(rng.randrange(5,120))))
+    return rows
+if __name__=="__main__":
+    for nstations in (1,12,120):
+        rows=make_rows(nstations); timings={}
+        for name,fn in (("loop",loop_means),("pandas",pandas_means),("sql",sql_means)):
+            t=perf_counter(); result=fn(rows); timings[name]=perf_counter()-t
+        assert result==loop_means(rows) or all(abs(result[k]-v)<1e-9 for k,v in loop_means(rows).items())
+        print(nstations,len(rows),timings)
+    cProfile.run("loop_means(make_rows(1))")
