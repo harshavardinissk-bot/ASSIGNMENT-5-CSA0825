@@ -1,0 +1,15 @@
+def clean_pm25(value):
+    if value is None or str(value).strip().upper() in {"","NA"}: return None
+    x=float(value)
+    if x<0 or x>999: return None
+    return x
+def to_celsius(temp, unit):
+    return (float(temp)-32)*5/9 if unit.upper()=="F" else float(temp)
+def minmax(values):
+    lo,hi=min(values),max(values)
+    return [round((x-lo)/(hi-lo),3) for x in values] if hi!=lo else [0.0]*len(values)
+def zscore(values):
+    import statistics
+    mu=statistics.mean(values); sd=statistics.pstdev(values)
+    return [round((x-mu)/sd,3) if sd else 0.0 for x in values]
+print(minmax([48,95,121]), to_celsius(86,"F"), clean_pm25("NA"), clean_pm25("1200"))
