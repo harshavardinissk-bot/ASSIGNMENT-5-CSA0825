@@ -1,0 +1,11 @@
+import logging, time, cProfile
+logging.basicConfig(level=logging.INFO)
+def clean_row(row):
+    assert "station" in row and "pm25" in row
+    start=time.perf_counter()
+    result=clean_pm25(row["pm25"])
+    logging.debug("cleaned row in %.6f sec",time.perf_counter()-start)
+    return result
+# Debug: breakpoint() then inspect row/result
+# Profile: cProfile.run("run_pipeline(sample)")
+# Repeat a small pure function with timeit in a separate benchmark.
